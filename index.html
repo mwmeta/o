@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام الذكاء الاصطناعي - تسجيل الدخول</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 { color: #333; margin-bottom: 1rem; }
+        p { color: #666; margin-bottom: 2rem; }
+        .google-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            color: #555;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .google-btn:hover { background-color: #f9f9f9; }
+        .google-btn img { width: 20px; }
+        .user-info { display: none; }
+        .logout-btn {
+            margin-top: 20px;
+            color: #d9534f;
+            cursor: pointer;
+            text-decoration: underline;
+            background: none;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card" id="auth-container">
+        <div id="login-ui">
+            <h1>مرحباً بك</h1>
+            <p>سجل دخولك للوصول إلى أدوات الذكاء الاصطناعي</p>
+            <button class="google-btn" id="btn-google">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                تسجيل الدخول عبر جوجل
+            </button>
+        </div>
+
+        <div id="user-ui" class="user-info">
+            <h1>تم الدخول بنجاح!</h1>
+            <p id="user-email"></p>
+            <div style="padding: 20px; background: #e7f3ff; border-radius: 10px; color: #333;">
+                أنت الآن جاهز لاستخدام النظام.
+            </div>
+            <button class="logout-btn" id="btn-logout">تسجيل الخروج</button>
+        </div>
+    </div>
+
+    <script>
+        // إعدادات Supabase الخاصة بك
+        const SUPABASE_URL = 'https://ptwteahlznfcvvnuhyzw.supabase.co'; 
+        const SUPABASE_KEY = 'Sb_publishable_M-O4a54dij-a0iUzPwvCYg_u42wMFqF';
+
+        const supabase = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // وظيفة الدخول عبر جوجل
+        document.getElementById('btn-google').onclick = async () => {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin // يعود لنفس الرابط بعد النجاح
+                }
+            });
+            if (error) alert("خطأ في الاتصال: " + error.message);
+        };
+
+        // وظيفة الخروج
+        document.getElementById('btn-logout').onclick = async () => {
+            await supabase.auth.signOut();
+            window.location.reload();
+        };
+
+        // مراقبة حالة المستخدم (هل سجل دخوله أم لا؟)
+        async function checkSession() {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+                document.getElementById('login-ui').style.display = 'none';
+                document.getElementById('user-ui').style.display = 'block';
+                document.getElementById('user-email').innerText = "مرحباً: " + user.email;
+            }
+        }
+
+        checkSession();
+    </script>
+</body>
+</html>
