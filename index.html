@@ -3,111 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول عبر البريد</title>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <title>تسجيل دخول جوجل</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --primary: #007bff; --bg: #f4f7f6; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 380px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; text-align: center; font-size: 16px; }
-        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        button:disabled { background: #ccc; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 350px; }
+        .google-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px; background: white; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        #status { margin-top: 15px; font-size: 13px; color: #888; }
         .hidden { display: none; }
-        #status { margin-top: 15px; font-size: 13px; color: #666; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h2>تسجيل الدخول</h2>
+        <div id="auth-ui">
+            <h2>مرحباً بك</h2>
+            <p>سجل دخولك الآن عبر جوجل</p>
+            <button class="google-btn" id="login-btn">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
+                الدخول بواسطة Google
+            </button>
+        </div>
+
+        <div id="user-ui" class="hidden">
+            <h2 style="color: green;">تم الدخول!</h2>
+            <p id="user-email"></p>
+            <button onclick="logout()" style="background:none; border:none; color:red; cursor:pointer; text-decoration:underline;">تسجيل الخروج</button>
+        </div>
         
-        <div id="step-email">
-            <p>أدخل بريدك الإلكتروني لتلقي كود الدخول</p>
-            <input type="email" id="user-email-input" placeholder="example@gmail.com">
-            <button id="btn-send" onclick="handleSendCode()">إرسال كود التفعيل</button>
-        </div>
-
-        <div id="step-otp" class="hidden">
-            <p>أدخل الكود المكون من 6 أرقام</p>
-            <input type="text" id="otp-input" placeholder="000000" maxlength="6">
-            <button id="btn-verify" onclick="handleVerifyOtp()">تأكيد ودخول</button>
-            <p style="font-size: 12px; color: blue; cursor: pointer;" onclick="location.reload()">تغيير البريد؟</p>
-        </div>
-
-        <div id="step-success" class="hidden">
-            <h3 style="color: #28a745;">تم الدخول بنجاح!</h3>
-            <div id="display-email" style="margin: 15px 0; font-weight: bold;"></div>
-            <button style="background: #dc3545;" onclick="handleLogout()">تسجيل الخروج</button>
-        </div>
-
-        <div id="status"></div>
+        <div id="status">جاهز...</div>
     </div>
 
     <script>
         const SB_URL = 'https://ptwteahlznfcvvnuhyzw.supabase.co';
         const SB_KEY = 'Sb_publishable_M-O4a54dij-a0iUzPwvCYg_u42wMFqF';
+
+        // إنشاء العميل مع التحقق من وجود المكتبة
         const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
-        // وظيفة إرسال الكود
-        async function handleSendCode() {
-            const email = document.getElementById('user-email-input').value;
-            if (!email) return alert("يرجى كتابة البريد");
+        document.getElementById('login-btn').onclick = async () => {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerText = "جاري الاتصال بمحرك جوجل...";
+            
+            try {
+                // تحديد رابط العودة بناءً على البيئة (موقع أو APK)
+                const isApp = window.location.protocol === 'file:';
+                const redirectUrl = isApp 
+                    ? 'io.supabase.akray://login-callback' 
+                    : 'https://mwmeta.github.io/o';
 
-            document.getElementById('btn-send').disabled = true;
-            document.getElementById('status').innerText = "جاري الإرسال...";
+                const { error } = await supabaseClient.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: redirectUrl,
+                        skipBrowserRedirect: false // هذا السطر يحل مشكلة "تعليق" الاتصال
+                    }
+                });
 
-            const { error } = await supabaseClient.auth.signInWithOtp({
-                email: email,
-                options: { shouldCreateUser: true }
-            });
+                if (error) throw error;
+            } catch (err) {
+                alert("خطأ: " + err.message);
+                statusDiv.innerText = "فشل الاتصال";
+            }
+        };
 
-            if (error) {
-                alert("فشل الإرسال: " + error.message);
-                document.getElementById('btn-send').disabled = false;
-            } else {
-                document.getElementById('step-email').classList.add('hidden');
-                document.getElementById('step-otp').classList.remove('hidden');
-                document.getElementById('status').innerText = "تم إرسال الكود إلى بريدك";
+        // فحص حالة المستخدم
+        async function checkUser() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user) {
+                document.getElementById('auth-ui').classList.add('hidden');
+                document.getElementById('user-ui').classList.remove('hidden');
+                document.getElementById('user-email').innerText = user.email;
+                document.getElementById('status').innerText = "";
             }
         }
 
-        // وظيفة التحقق من الكود
-        async function handleVerifyOtp() {
-            const email = document.getElementById('user-email-input').value;
-            const token = document.getElementById('otp-input').value;
-
-            document.getElementById('status').innerText = "جاري التحقق...";
-
-            const { data, error } = await supabaseClient.auth.verifyOtp({
-                email,
-                token,
-                type: 'email'
-            });
-
-            if (error) {
-                alert("الكود غير صحيح أو انتهت صلاحيته: " + error.message);
-            } else {
-                showSuccess(data.user);
-            }
-        }
-
-        function showSuccess(user) {
-            document.getElementById('step-otp').classList.add('hidden');
-            document.getElementById('step-success').classList.remove('hidden');
-            document.getElementById('display-email').innerText = user.email;
-            document.getElementById('status').innerText = "";
-        }
-
-        async function handleLogout() {
+        async function logout() {
             await supabaseClient.auth.signOut();
             location.reload();
         }
 
-        // فحص الجلسة عند التحميل
-        window.onload = async () => {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (user) showSuccess(user);
-        }
+        checkUser();
     </script>
 </body>
 </html>
+
