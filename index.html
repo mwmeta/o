@@ -6,113 +6,86 @@
     <title>نظام الذكاء الاصطناعي - تسجيل الدخول</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .login-card {
-            background: white;
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            text-align: center;
-            width: 100%;
-            max-width: 400px;
-        }
-        h1 { color: #333; margin-bottom: 1rem; }
-        p { color: #666; margin-bottom: 2rem; }
-        .google-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-            padding: 12px;
-            background-color: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            color: #555;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        .google-btn:hover { background-color: #f9f9f9; }
-        .google-btn img { width: 20px; }
-        .user-info { display: none; }
-        .logout-btn {
-            margin-top: 20px;
-            color: #d9534f;
-            cursor: pointer;
-            text-decoration: underline;
-            background: none;
-            border: none;
-        }
+        :root { --primary-color: #4285F4; --bg-color: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-color); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 400px; }
+        .logo { width: 60px; height: 60px; margin-bottom: 20px; }
+        h1 { font-size: 24px; color: #333; margin-bottom: 10px; }
+        p { color: #666; font-size: 14px; margin-bottom: 30px; }
+        .google-btn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 14px; background: white; border: 1px solid #dadce0; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .google-btn:hover { background: #f7f8f8; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .user-profile { display: none; }
+        .email-display { background: #f1f3f4; padding: 10px; border-radius: 5px; margin: 15px 0; font-family: monospace; }
+        .logout-link { color: #d93025; cursor: pointer; font-size: 13px; text-decoration: none; }
     </style>
 </head>
 <body>
 
-    <div class="login-card" id="auth-container">
-        <div id="login-ui">
-            <h1>مرحباً بك</h1>
-            <p>سجل دخولك للوصول إلى أدوات الذكاء الاصطناعي</p>
-            <button class="google-btn" id="btn-google">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
-                تسجيل الدخول عبر جوجل
+    <div class="card">
+        <div id="login-section">
+            <img src="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png" class="logo">
+            <h1>أهلاً بك</h1>
+            <p>سجل دخولك باستخدام حساب جوجل للبدء</p>
+            <button class="google-btn" id="login-button">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
+                متابعة باستخدام Google
             </button>
         </div>
 
-        <div id="user-ui" class="user-info">
-            <h1>تم الدخول بنجاح!</h1>
-            <p id="user-email"></p>
-            <div style="padding: 20px; background: #e7f3ff; border-radius: 10px; color: #333;">
-                أنت الآن جاهز لاستخدام النظام.
-            </div>
-            <button class="logout-btn" id="btn-logout">تسجيل الخروج</button>
+        <div id="user-section" class="user-profile">
+            <h1>مرحباً بك مجدداً</h1>
+            <div class="email-display" id="user-email"></div>
+            <p>لقد قمت بتسجيل الدخول بنجاح.</p>
+            <button class="logout-link" id="logout-button" style="border:none; background:none;">تسجيل الخروج</button>
         </div>
     </div>
 
     <script>
-        // إعدادات Supabase الخاصة بك
-        const SUPABASE_URL = 'https://ptwteahlznfcvvnuhyzw.supabase.co'; 
-        const SUPABASE_KEY = 'Sb_publishable_M-O4a54dij-a0iUzPwvCYg_u42wMFqF';
+        // إعدادات مشروعك
+        const SB_URL = 'https://ptwteahlznfcvvnuhyzw.supabase.co';
+        const SB_KEY = 'Sb_publishable_M-O4a54dij-a0iUzPwvCYg_u42wMFqF';
 
-        const supabase = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabase = supabasejs.createClient(SB_URL, SB_KEY);
 
-        // وظيفة الدخول عبر جوجل
-        document.getElementById('btn-google').onclick = async () => {
+        // وظيفة تسجيل الدخول
+        document.getElementById('login-button').onclick = async () => {
+            // كشف البيئة: هل نحن في تطبيق APK أم متصفح ويب؟
+            const isApp = window.location.protocol === 'file:';
+            const redirectTarget = isApp 
+                ? 'io.supabase.akray://login-callback' 
+                : 'https://mwmeta.github.io/o';
+
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: window.location.origin // يعود لنفس الرابط بعد النجاح
+                    redirectTo: redirectTarget
                 }
             });
-            if (error) alert("خطأ في الاتصال: " + error.message);
+
+            if (error) {
+                console.error("Auth Error:", error.message);
+                alert("تعذر الاتصال بجوجل: " + error.message);
+            }
         };
 
         // وظيفة الخروج
-        document.getElementById('btn-logout').onclick = async () => {
+        document.getElementById('logout-button').onclick = async () => {
             await supabase.auth.signOut();
             window.location.reload();
         };
 
-        // مراقبة حالة المستخدم (هل سجل دخوله أم لا؟)
-        async function checkSession() {
+        // التحقق من حالة المستخدم عند تحميل الصفحة
+        async function initApp() {
             const { data: { user } } = await supabase.auth.getUser();
             
             if (user) {
-                document.getElementById('login-ui').style.display = 'none';
-                document.getElementById('user-ui').style.display = 'block';
-                document.getElementById('user-email').innerText = "مرحباً: " + user.email;
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('user-section').style.display = 'block';
+                document.getElementById('user-email').innerText = user.email;
             }
         }
 
-        checkSession();
+        initApp();
     </script>
 </body>
 </html>
