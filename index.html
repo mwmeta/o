@@ -3,63 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام تسجيل الدخول</title>
+    <title>نظام الدخول</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 320px; }
-        .btn { width: 100%; padding: 12px; border-radius: 8px; cursor: pointer; border: 1px solid #ddd; font-weight: bold; margin-top: 10px; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 400px;
+        }
+        .btn-google {
+            background-color: white;
+            color: #555;
+            border: 1px solid #ddd;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            transition: 0.3s;
+        }
+        .btn-google:hover { background-color: #f8f9fa; }
+        .success-icon { font-size: 50px; color: #28a745; margin-bottom: 20px; }
+        .user-email { color: #666; font-weight: bold; margin: 15px 0; }
+        .btn-logout {
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
         .hidden { display: none; }
-        #status { font-size: 12px; color: #666; margin-top: 15px; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <div id="auth-ui">
-            <h2>تسجيل الدخول</h2>
-            <button class="btn" id="login-btn">متابعة باستخدام Google</button>
-        </div>
+    <div id="login-view" class="container">
+        <h2>أهلاً بك</h2>
+        <p>يرجى تسجيل الدخول للمتابعة</p>
+        <button class="btn-google" id="login-btn">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
+            الدخول بواسطة Google
+        </button>
+        <p id="status" style="font-size: 12px; color: #888; margin-top: 15px;">جاهز للاتصال...</p>
+    </div>
 
-        <div id="user-ui" class="hidden">
-            <h2 style="color: green;">مرحباً بك!</h2>
-            <p id="user-email" style="word-break: break-all;"></p>
-            <button class="btn" onclick="logout()" style="color: red;">خروج</button>
-        </div>
-        
-        <div id="status">جاري التحقق من الجلسة...</div>
+    <div id="success-view" class="container hidden">
+        <div class="success-icon">✓</div>
+        <h1 style="color: #28a745;">تم تسجيل الدخول بنجاح</h1>
+        <p>مرحباً بك في النظام</p>
+        <div id="display-email" class="user-email"></div>
+        <button class="btn-logout" onclick="handleLogout()">تسجيل الخروج</button>
     </div>
 
     <script>
+        // إعدادات Supabase
         const SB_URL = 'https://ptwteahlznfcvvnuhyzw.supabase.co';
         const SB_KEY = 'Sb_publishable_M-O4a54dij-a0iUzPwvCYg_u42wMFqF';
 
-        // إعداد العميل مع خيار حفظ الجلسة تلقائياً
         const supabaseClient = supabase.createClient(SB_URL, SB_KEY, {
             auth: {
                 persistSession: true,
-                autoRefreshToken: true,
-                detectSessionInUrl: true // هذا السطر هو مفتاح الحل للعودة من جوجل
+                detectSessionInUrl: true
             }
         });
 
-        // مراقبة حالة المصادقة (تغيير الواجهة فوراً عند الدخول)
+        // 1. مراقب الحالة (أهم جزء لعدم تكرار الدخول)
         supabaseClient.auth.onAuthStateChange((event, session) => {
-            console.log("Auth Event:", event);
-            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-                if (session?.user) {
-                    showUser(session.user);
-                }
+            if (event === 'SIGNED_IN' || session) {
+                showSuccessPage(session.user);
             }
         });
 
+        // 2. وظيفة زر الدخول
         document.getElementById('login-btn').onclick = async () => {
-            document.getElementById('status').innerText = "جاري الانتقال لجوجل...";
+            document.getElementById('status').innerText = "جاري فتح جوجل...";
             
             const isApp = window.location.protocol === 'file:';
             const redirectUrl = isApp 
                 ? 'io.supabase.akray://login-callback' 
-                : window.location.origin + window.location.pathname; // يضمن العودة لنفس الصفحة بدقة
+                : window.location.origin + window.location.pathname;
 
             const { error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
@@ -71,28 +113,27 @@
             if (error) alert("خطأ: " + error.message);
         };
 
-        function showUser(user) {
-            document.getElementById('auth-ui').classList.add('hidden');
-            document.getElementById('user-ui').classList.remove('hidden');
-            document.getElementById('user-email').innerText = user.email;
-            document.getElementById('status').innerText = "متصل الآن";
+        // 3. عرض صفحة النجاح
+        function showSuccessPage(user) {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('success-view').classList.remove('hidden');
+            document.getElementById('display-email').innerText = user.email;
         }
 
-        async function logout() {
+        // 4. تسجيل الخروج
+        async function handleLogout() {
             await supabaseClient.auth.signOut();
-            window.location.href = window.location.origin + window.location.pathname;
+            window.location.reload();
         }
 
-        // فحص أولي عند التشغيل
-        async function checkInitial() {
+        // فحص أولي عند تحميل الصفحة
+        async function init() {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
-                showUser(session.user);
-            } else {
-                document.getElementById('status').innerText = "يرجى تسجيل الدخول";
+                showSuccessPage(session.user);
             }
         }
-        checkInitial();
+        init();
     </script>
 </body>
 </html>
