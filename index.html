@@ -3,88 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل دخول جوجل</title>
+    <title>نظام تسجيل الدخول</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 350px; }
-        .google-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px; background: white; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        #status { margin-top: 15px; font-size: 13px; color: #888; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 320px; }
+        .btn { width: 100%; padding: 12px; border-radius: 8px; cursor: pointer; border: 1px solid #ddd; font-weight: bold; margin-top: 10px; }
         .hidden { display: none; }
+        #status { font-size: 12px; color: #666; margin-top: 15px; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <div id="auth-ui">
-            <h2>مرحباً بك</h2>
-            <p>سجل دخولك الآن عبر جوجل</p>
-            <button class="google-btn" id="login-btn">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
-                الدخول بواسطة Google
-            </button>
+            <h2>تسجيل الدخول</h2>
+            <button class="btn" id="login-btn">متابعة باستخدام Google</button>
         </div>
 
         <div id="user-ui" class="hidden">
-            <h2 style="color: green;">تم الدخول!</h2>
-            <p id="user-email"></p>
-            <button onclick="logout()" style="background:none; border:none; color:red; cursor:pointer; text-decoration:underline;">تسجيل الخروج</button>
+            <h2 style="color: green;">مرحباً بك!</h2>
+            <p id="user-email" style="word-break: break-all;"></p>
+            <button class="btn" onclick="logout()" style="color: red;">خروج</button>
         </div>
         
-        <div id="status">جاهز...</div>
+        <div id="status">جاري التحقق من الجلسة...</div>
     </div>
 
     <script>
         const SB_URL = 'https://ptwteahlznfcvvnuhyzw.supabase.co';
         const SB_KEY = 'Sb_publishable_M-O4a54dij-a0iUzPwvCYg_u42wMFqF';
 
-        // إنشاء العميل مع التحقق من وجود المكتبة
-        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+        // إعداد العميل مع خيار حفظ الجلسة تلقائياً
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY, {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: true // هذا السطر هو مفتاح الحل للعودة من جوجل
+            }
+        });
+
+        // مراقبة حالة المصادقة (تغيير الواجهة فوراً عند الدخول)
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+            console.log("Auth Event:", event);
+            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                if (session?.user) {
+                    showUser(session.user);
+                }
+            }
+        });
 
         document.getElementById('login-btn').onclick = async () => {
-            const statusDiv = document.getElementById('status');
-            statusDiv.innerText = "جاري الاتصال بمحرك جوجل...";
+            document.getElementById('status').innerText = "جاري الانتقال لجوجل...";
             
-            try {
-                // تحديد رابط العودة بناءً على البيئة (موقع أو APK)
-                const isApp = window.location.protocol === 'file:';
-                const redirectUrl = isApp 
-                    ? 'io.supabase.akray://login-callback' 
-                    : 'https://mwmeta.github.io/o';
+            const isApp = window.location.protocol === 'file:';
+            const redirectUrl = isApp 
+                ? 'io.supabase.akray://login-callback' 
+                : window.location.origin + window.location.pathname; // يضمن العودة لنفس الصفحة بدقة
 
-                const { error } = await supabaseClient.auth.signInWithOAuth({
-                    provider: 'google',
-                    options: {
-                        redirectTo: redirectUrl,
-                        skipBrowserRedirect: false // هذا السطر يحل مشكلة "تعليق" الاتصال
-                    }
-                });
+            const { error } = await supabaseClient.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: redirectUrl
+                }
+            });
 
-                if (error) throw error;
-            } catch (err) {
-                alert("خطأ: " + err.message);
-                statusDiv.innerText = "فشل الاتصال";
-            }
+            if (error) alert("خطأ: " + error.message);
         };
 
-        // فحص حالة المستخدم
-        async function checkUser() {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (user) {
-                document.getElementById('auth-ui').classList.add('hidden');
-                document.getElementById('user-ui').classList.remove('hidden');
-                document.getElementById('user-email').innerText = user.email;
-                document.getElementById('status').innerText = "";
-            }
+        function showUser(user) {
+            document.getElementById('auth-ui').classList.add('hidden');
+            document.getElementById('user-ui').classList.remove('hidden');
+            document.getElementById('user-email').innerText = user.email;
+            document.getElementById('status').innerText = "متصل الآن";
         }
 
         async function logout() {
             await supabaseClient.auth.signOut();
-            location.reload();
+            window.location.href = window.location.origin + window.location.pathname;
         }
 
-        checkUser();
+        // فحص أولي عند التشغيل
+        async function checkInitial() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                showUser(session.user);
+            } else {
+                document.getElementById('status').innerText = "يرجى تسجيل الدخول";
+            }
+        }
+        checkInitial();
     </script>
 </body>
 </html>
-
