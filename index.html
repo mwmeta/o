@@ -4,19 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>نظام الذكاء الاصطناعي - تسجيل الدخول</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
     <style>
         :root { --primary-color: #4285F4; --bg-color: #f8f9fa; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-color); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg-color); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 400px; }
         .logo { width: 60px; height: 60px; margin-bottom: 20px; }
-        h1 { font-size: 24px; color: #333; margin-bottom: 10px; }
+        h1 { font-size: 22px; color: #333; margin-bottom: 10px; }
         p { color: #666; font-size: 14px; margin-bottom: 30px; }
         .google-btn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 14px; background: white; border: 1px solid #dadce0; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.3s; }
-        .google-btn:hover { background: #f7f8f8; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .google-btn:hover { background: #f7f8f8; }
         .user-profile { display: none; }
-        .email-display { background: #f1f3f4; padding: 10px; border-radius: 5px; margin: 15px 0; font-family: monospace; }
-        .logout-link { color: #d93025; cursor: pointer; font-size: 13px; text-decoration: none; }
+        .status-msg { margin-top: 10px; font-size: 12px; color: #888; }
+        .logout-btn { margin-top: 20px; color: #d93025; background: none; border: none; cursor: pointer; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -25,59 +27,71 @@
         <div id="login-section">
             <img src="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png" class="logo">
             <h1>أهلاً بك</h1>
-            <p>سجل دخولك باستخدام حساب جوجل للبدء</p>
+            <p>اضغط للبدء باستخدام حساب جوجل</p>
             <button class="google-btn" id="login-button">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
                 متابعة باستخدام Google
             </button>
+            <div id="status" class="status-msg">جاهز للاتصال...</div>
         </div>
 
         <div id="user-section" class="user-profile">
-            <h1>مرحباً بك مجدداً</h1>
-            <div class="email-display" id="user-email"></div>
-            <p>لقد قمت بتسجيل الدخول بنجاح.</p>
-            <button class="logout-link" id="logout-button" style="border:none; background:none;">تسجيل الخروج</button>
+            <h1>تم تسجيل الدخول</h1>
+            <div id="user-email" style="background:#e8f0fe; padding:10px; border-radius:8px; margin:15px 0;"></div>
+            <button class="logout-btn" id="logout-button">تسجيل الخروج</button>
         </div>
     </div>
 
     <script>
-        // إعدادات مشروعك
+        // 1. إعدادات المشروع
         const SB_URL = 'https://ptwteahlznfcvvnuhyzw.supabase.co';
         const SB_KEY = 'Sb_publishable_M-O4a54dij-a0iUzPwvCYg_u42wMFqF';
 
-        const supabase = supabasejs.createClient(SB_URL, SB_KEY);
+        // التأكد من تحميل المكتبة قبل البدء
+        if (typeof supabase === 'undefined' && typeof supabasejs === 'undefined') {
+            document.getElementById('status').innerText = "خطأ: لم يتم تحميل مكتبة Supabase";
+            document.getElementById('status').style.color = "red";
+        }
 
-        // وظيفة تسجيل الدخول
+        const _supabase = (typeof supabasejs !== 'undefined') ? supabasejs : supabase;
+        const client = _supabase.createClient(SB_URL, SB_KEY);
+
+        // 2. معالج الضغط على الزر
         document.getElementById('login-button').onclick = async () => {
-            // كشف البيئة: هل نحن في تطبيق APK أم متصفح ويب؟
-            const isApp = window.location.protocol === 'file:';
-            const redirectTarget = isApp 
-                ? 'io.supabase.akray://login-callback' 
-                : 'https://mwmeta.github.io/o';
+            document.getElementById('status').innerText = "جاري فتح نافذة جوجل...";
+            
+            try {
+                const isApp = window.location.protocol === 'file:';
+                const redirectTarget = isApp 
+                    ? 'io.supabase.akray://login-callback' 
+                    : 'https://mwmeta.github.io/o';
 
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: redirectTarget
-                }
-            });
+                const { error } = await client.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: redirectTarget,
+                        queryParams: {
+                            prompt: 'select_account' // يجبر جوجل على إظهار نافذة اختيار الحساب
+                        }
+                    }
+                });
 
-            if (error) {
-                console.error("Auth Error:", error.message);
-                alert("تعذر الاتصال بجوجل: " + error.message);
+                if (error) throw error;
+            } catch (err) {
+                alert("تعذر الاتصال بسوبا بيس: " + err.message);
+                document.getElementById('status').innerText = "خطأ في الاتصال";
             }
         };
 
-        // وظيفة الخروج
+        // 3. وظيفة الخروج
         document.getElementById('logout-button').onclick = async () => {
-            await supabase.auth.signOut();
+            await client.auth.signOut();
             window.location.reload();
         };
 
-        // التحقق من حالة المستخدم عند تحميل الصفحة
-        async function initApp() {
-            const { data: { user } } = await supabase.auth.getUser();
-            
+        // 4. التحقق من حالة الجلسة
+        async function checkUser() {
+            const { data: { user } } = await client.auth.getUser();
             if (user) {
                 document.getElementById('login-section').style.display = 'none';
                 document.getElementById('user-section').style.display = 'block';
@@ -85,7 +99,7 @@
             }
         }
 
-        initApp();
+        checkUser();
     </script>
 </body>
 </html>
